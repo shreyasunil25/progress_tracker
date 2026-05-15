@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Progress Tracker 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #E8642A;
+    --primary-rgb: 232, 100, 42;
+    --bg: #0D0D0D;
+    --surface: #161616;
+    --surface2: #1E1E1E;
+    --border: #2A2A2A;
+    --text: #F0EDE8;
+    --text-muted: #6B6560;
+    --text-soft: #A39E99;
+    --success: #4CAF78;
+    --warn: #E8B42A;
+    --radius: 12px;
+    --transition: 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── LOADING SCREEN ── */
+  #loader {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.6s ease, visibility 0.6s ease;
+  }
+  #loader.hide { opacity: 0; visibility: hidden; }
+
+  .loader-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 6vw, 4rem);
+    letter-spacing: -0.02em;
+    color: var(--text);
+    animation: blink-fade 1.8s ease-in-out infinite;
+  }
+  .loader-title span { color: var(--primary); }
+  .loader-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    margin-top: 12px;
+    text-transform: uppercase;
+    animation: blink-fade 1.8s ease-in-out 0.3s infinite;
+  }
+  .loader-bar {
+    width: 160px; height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 32px;
+    overflow: hidden;
+  }
+  .loader-bar-fill {
+    height: 100%;
+    background: var(--primary);
+    width: 0%;
+    border-radius: 2px;
+    animation: load-fill 1.6s ease-out forwards 0.2s;
+  }
+
+  @keyframes blink-fade {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+  @keyframes load-fill {
+    to { width: 100%; }
+  }
+
+  /* ── APP SHELL ── */
+  #app {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  #app.visible { opacity: 1; transform: translateY(0); }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 48px;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  .brand h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .brand h1 em { color: var(--primary); font-style: normal; }
+  .brand p {
+    color: var(--text-muted);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .streak-badge {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    min-width: 180px;
+    text-align: center;
+  }
+  .streak-count {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2rem;
+    color: var(--primary);
+    line-height: 1;
+  }
+  .streak-label {
+    color: var(--text-muted);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .streak-msg {
+    font-size: 10px;
+    margin-top: 8px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: rgba(var(--primary-rgb), 0.12);
+    color: var(--primary);
+    line-height: 1.4;
+  }
+  .streak-msg.warn { background: rgba(232, 180, 42, 0.12); color: var(--warn); }
+
+  /* ── VIEWS ── */
+  .view {
+    display: none;
+    animation: slide-in 0.35s ease forwards;
+  }
+  .view.active { display: block; }
+
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── BREADCRUMB ── */
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 28px;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .breadcrumb a {
+    color: var(--primary);
+    cursor: pointer;
+    text-decoration: none;
+    transition: opacity 0.2s;
+  }
+  .breadcrumb a:hover { opacity: 0.7; }
+  .breadcrumb .sep { color: var(--border); }
+
+  /* ── YEAR VIEW: MONTH GRID ── */
+  .view-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.4rem;
+    margin-bottom: 24px;
+    letter-spacing: -0.02em;
+    color: var(--text-soft);
+  }
+
+  .month-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+
+  .month-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    cursor: pointer;
+    transition: border-color var(--transition), transform 0.2s ease, background var(--transition);
+    position: relative;
+    overflow: hidden;
+  }
+  .month-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(var(--primary-rgb), var(--fill, 0));
+    transition: background var(--transition);
+    pointer-events: none;
+  }
+  .month-card:hover {
+    border-color: rgba(var(--primary-rgb), 0.4);
+    transform: translateY(-2px);
+  }
+  .month-card .month-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+    position: relative;
+  }
+  .month-card .month-pct {
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--primary);
+    position: relative;
+  }
+  .month-card .month-pct-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+    position: relative;
+  }
+  .month-bar {
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    margin-top: 12px;
+    overflow: hidden;
+    position: relative;
+  }
+  .month-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--primary);
+    transition: width var(--transition);
+  }
+
+  /* ── DATE VIEW ── */
+  .date-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+  .day-header {
+    text-align: center;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 6px 0;
+  }
+  .day-cell {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition);
+    position: relative;
+    background: var(--surface);
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .day-cell:hover { border-color: rgba(var(--primary-rgb), 0.5); transform: scale(1.04); }
+  .day-cell.empty { background: transparent; border-color: transparent; cursor: default; }
+  .day-cell.today { border-color: var(--primary) !important; }
+  .day-cell.today::after {
+    content: '';
+    position: absolute;
+    bottom: 5px;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--primary);
+  }
+  .day-cell .day-pct {
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .day-cell.has-tasks .day-pct { color: var(--primary); }
+
+  /* ── TASK VIEW ── */
+  .task-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .task-date-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.8rem;
+    letter-spacing: -0.03em;
+  }
+  .task-date-pct {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  .task-progress-ring {
+    width: 64px; height: 64px;
+    flex-shrink: 0;
+  }
+  .ring-bg { fill: none; stroke: var(--border); stroke-width: 4; }
+  .ring-fill {
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 4;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: center;
+    transition: stroke-dashoffset var(--transition);
+  }
+  .ring-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    fill: var(--text);
+    dominant-baseline: middle;
+    text-anchor: middle;
+  }
+
+  .add-task-form {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 24px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 140px; }
+  .form-group label { font-size: 10px; color: var(--text-muted); letter-spacing: 0.15em; text-transform: uppercase; }
+  .form-group input,
+  .form-group select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus,
+  .form-group select:focus { border-color: var(--primary); }
+  .form-group input::placeholder { color: var(--text-muted); }
+  .form-group select option { background: var(--surface2); }
+
+  .btn {
+    background: var(--primary);
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    padding: 9px 18px;
+    text-transform: uppercase;
+    transition: opacity 0.2s, transform 0.1s;
+    white-space: nowrap;
+    align-self: flex-end;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+
+  .task-sections { display: flex; flex-direction: column; gap: 24px; }
+  .task-section h3 {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .task-section h3::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .task-list { display: flex; flex-direction: column; gap: 6px; }
+  .task-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.2s, opacity 0.2s;
+    animation: slide-in 0.2s ease;
+  }
+  .task-item.done { opacity: 0.5; }
+  .task-item.done .task-name { text-decoration: line-through; }
+
+  .task-check {
+    width: 18px; height: 18px;
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    background: transparent;
+  }
+  .task-check.checked {
+    background: var(--primary);
+    border-color: var(--primary);
+  }
+  .task-check.checked::after {
+    content: '';
+    width: 5px; height: 8px;
+    border: 1.5px solid #fff;
+    border-top: none; border-left: none;
+    transform: rotate(45deg) translateY(-1px);
+  }
+
+  .task-name { flex: 1; font-size: 13px; }
+  .task-type-badge {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: var(--surface2);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .task-del {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 4px;
+    transition: color 0.2s;
+    flex-shrink: 0;
+  }
+  .task-del:hover { color: #E84242; }
+
+  .task-item .task-date-tag {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 6px;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .task-item.done .task-check { background: var(--surface2); border-color: var(--border); }
+  .task-item.done .task-check::after {
+    content: '';
+    width: 5px; height: 8px;
+    border: 1.5px solid var(--text-muted);
+    border-top: none; border-left: none;
+    transform: rotate(45deg) translateY(-1px);
+  }
+
+  .history-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    padding: 6px 14px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    margin-bottom: 20px;
+  }
+  .history-toggle:hover { border-color: var(--primary); color: var(--primary); }
+
+  .history-section {
+    margin-top: 32px;
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+  }
+  .history-section .history-group { margin-bottom: 20px; }
+  .history-section .history-group-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .history-section .history-group-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 32px;
+    color: var(--text-muted);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── COLOR SETTINGS ── */
+  .color-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+  .color-control label {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+  .color-control input[type="color"] {
+    width: 32px; height: 32px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 2px;
+    background: var(--surface);
+    cursor: pointer;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .month-grid { grid-template-columns: repeat(2, 1fr); }
+    .date-grid { gap: 4px; }
+    .day-cell { font-size: 11px; }
+    header { flex-direction: column; }
+    .streak-badge { min-width: unset; width: 100%; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="loader-title">Progress<span>&nbsp;Tracker</span></div>
+  <div class="loader-sub">2026 — Track Every Day</div>
+  <div class="loader-bar"><div class="loader-bar-fill"></div></div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="brand">
+      <h1>Progress <em>Tracker</em></h1>
+      <p>2026 — Personal Productivity</p>
+    </div>
+    <div class="streak-badge">
+      <div class="streak-count" id="streak-count">0</div>
+      <div class="streak-label">Day Streak 🔥</div>
+      <div class="streak-msg" id="streak-msg">Start your journey</div>
+    </div>
+  </header>
+
+  <div class="color-control">
+    <label>Theme Color</label>
+    <input type="color" id="color-picker" value="#E8642A">
+  </div>
+
+  <!-- YEAR VIEW -->
+  <div class="view active" id="view-year">
+    <div class="view-title">2026 — Overview</div>
+    <div class="month-grid" id="month-grid"></div>
+  </div>
+
+  <!-- MONTH VIEW -->
+  <div class="view" id="view-month">
+    <div class="breadcrumb">
+      <a onclick="showYear()">2026</a>
+      <span class="sep">›</span>
+      <span id="bc-month"></span>
+    </div>
+    <div class="date-grid" id="date-grid"></div>
+  </div>
+
+  <!-- TASK VIEW -->
+  <div class="view" id="view-tasks">
+    <div class="breadcrumb">
+      <a onclick="showYear()">2026</a>
+      <span class="sep">›</span>
+      <a id="bc-month-link" onclick="showMonth()"></a>
+      <span class="sep">›</span>
+      <span id="bc-day"></span>
+    </div>
+    <div class="task-header">
+      <div>
+        <div class="task-date-title" id="task-date-title"></div>
+        <div class="task-date-pct" id="task-date-pct">No tasks yet</div>
+      </div>
+      <svg class="task-progress-ring" viewBox="0 0 64 64" id="progress-ring-svg">
+        <circle class="ring-bg" cx="32" cy="32" r="28"/>
+        <circle class="ring-fill" cx="32" cy="32" r="28" id="ring-fill"
+          stroke-dasharray="175.93" stroke-dashoffset="175.93"/>
+        <text class="ring-text" x="32" y="32" id="ring-text">0%</text>
+      </svg>
+    </div>
+    <div class="add-task-form">
+      <div class="form-group">
+        <label>Task</label>
+        <input type="text" id="task-input" placeholder="What needs to be done?" maxlength="80">
+      </div>
+      <div class="form-group" style="flex:0;min-width:110px">
+        <label>Type</label>
+        <select id="task-type">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+      <button class="btn" onclick="addTask()">+ Add</button>
+    </div>
+    <div class="task-sections" id="task-sections"></div>
+
+    <!-- HISTORY -->
+    <div id="history-wrap" style="display:none">
+      <div class="history-section" id="history-section"></div>
+    </div>
+    <button class="history-toggle" id="history-btn" onclick="toggleHistory()">
+      ▾ Show Task History
+    </button>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let historyVisible = false;
+
+let state = {
+  tasks: JSON.parse(localStorage.getItem('pt_tasks') || '[]'),
+  streak: parseInt(localStorage.getItem('pt_streak') || '0'),
+  lastCompleted: localStorage.getItem('pt_lastCompleted') || null,
+  primaryColor: localStorage.getItem('pt_color') || '#E8642A',
+  currentMonth: null,
+  currentDate: null,
+};
+
+const MONTHS = ['January','February','March','April','May','June',
+  'July','August','September','October','November','December'];
+const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const DAYS_IN = [31,28,31,30,31,30,31,31,30,31,30,31]; // 2026 non-leap
+
+// ── COLOR UTILS ──
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return [r,g,b];
+}
+function lerp(a, b, t) { return Math.round(a + (b - a) * t); }
+
+// Red(0%) → Amber(50%) → Green(100%), alpha scales with completion
+function pctToGradientColor(pct, alphaScale) {
+  if (pct <= 0) return null;
+  alphaScale = alphaScale !== undefined ? alphaScale : 1;
+  const t = pct / 100;
+  let r, g, b;
+  if (t <= 0.5) {
+    const s = t / 0.5;
+    r = lerp(220, 220, s); g = lerp(60, 160, s); b = lerp(60, 30, s);
+  } else {
+    const s = (t - 0.5) / 0.5;
+    r = lerp(220, 50, s); g = lerp(160, 180, s); b = lerp(30, 90, s);
+  }
+  const a = ((0.18 + t * 0.55) * alphaScale).toFixed(2);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function pctToBorderColor(pct) {
+  if (pct <= 0) return null;
+  const t = pct / 100;
+  let r, g, b;
+  if (t <= 0.5) {
+    const s = t / 0.5;
+    r = lerp(220, 220, s); g = lerp(60, 160, s); b = lerp(60, 30, s);
+  } else {
+    const s = (t - 0.5) / 0.5;
+    r = lerp(220, 50, s); g = lerp(160, 180, s); b = lerp(30, 90, s);
+  }
+  return `rgba(${r},${g},${b},${(0.4 + t * 0.4).toFixed(2)})`;
+}
+function applyPrimary(hex) {
+  const [r,g,b] = hexToRgb(hex);
+  document.documentElement.style.setProperty('--primary', hex);
+  document.documentElement.style.setProperty('--primary-rgb', `${r},${g},${b}`);
+}
+
+// ── DATA HELPERS ──
+function save() {
+  localStorage.setItem('pt_tasks', JSON.stringify(state.tasks));
+  localStorage.setItem('pt_streak', state.streak);
+  localStorage.setItem('pt_lastCompleted', state.lastCompleted || '');
+  localStorage.setItem('pt_color', state.primaryColor);
+}
+
+function dateKey(y, m, d) {
+  return `2026-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
+function getTasksForDate(key) {
+  return state.tasks.filter(t => t.date === key);
+}
+
+// Only daily tasks for a specific date
+function getDailyPct(key) {
+  const tasks = getTasksForDate(key).filter(t => t.type === 'daily');
+  if (!tasks.length) return -1; // -1 = no daily tasks
+  return Math.round(tasks.filter(t => t.done).length / tasks.length * 100);
+}
+
+// Returns the Sun–Sat week range containing a given date key
+function getWeekRange(dk) {
+  const [y, m, d] = dk.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  const day = dt.getDay();
+  const keys = [];
+  for (let i = 0; i < 7; i++) {
+    const nd = new Date(y, m - 1, d - day + i);
+    keys.push(`${nd.getFullYear()}-${String(nd.getMonth()+1).padStart(2,'0')}-${String(nd.getDate()).padStart(2,'0')}`);
+  }
+  return keys;
+}
+
+// All weekly tasks across the week containing `key`
+function getWeeklyTasksForWeek(key) {
+  const weekKeys = getWeekRange(key);
+  return state.tasks.filter(t => t.type === 'weekly' && weekKeys.includes(t.date));
+}
+
+function getWeekPct(key) {
+  const tasks = getWeeklyTasksForWeek(key);
+  if (!tasks.length) return -1; // -1 = no weekly tasks for this week
+  return Math.round(tasks.filter(t => t.done).length / tasks.length * 100);
+}
+
+// Combined pct for a day: average of daily pct + weekly pct (only the ones that exist)
+// Returns { pct, hasTasks, dailyPct, weekPct, combined }
+function getDayCombinedPct(key) {
+  const dailyPct = getDailyPct(key);        // -1 if none
+  const weekPct  = getWeekPct(key);         // -1 if none
+
+  const hasDailyTasks  = dailyPct  >= 0;
+  const hasWeeklyTasks = weekPct   >= 0;
+
+  if (!hasDailyTasks && !hasWeeklyTasks) return { pct: 0, hasTasks: false, dailyPct, weekPct };
+
+  // Day is "fully done" only if ALL applicable task types are 100%
+  const parts = [];
+  if (hasDailyTasks)  parts.push(dailyPct);
+  if (hasWeeklyTasks) parts.push(weekPct);
+  const combined = Math.round(parts.reduce((a,b) => a+b, 0) / parts.length);
+  return { pct: combined, hasTasks: true, dailyPct, weekPct };
+}
+
+function getMonthPct(monthIdx) {
+  // Count all tasks (daily + weekly + monthly) assigned within this month
+  let total = 0, done = 0;
+  for (let d = 1; d <= DAYS_IN[monthIdx]; d++) {
+    const key = dateKey(2026, monthIdx, d);
+    const tasks = getTasksForDate(key);
+    total += tasks.length;
+    done  += tasks.filter(t => t.done).length;
+  }
+  return total ? Math.round(done / total * 100) : 0;
+}
+
+// Is the month "about to be over"? (within last 5 days or already past end of month relative to today)
+function isMonthNearEnd(monthIdx) {
+  const today = new Date();
+  const todayYear = today.getFullYear();
+  const todayMonth = today.getMonth();
+  const todayDate  = today.getDate();
+  if (todayYear !== 2026) return false;
+  if (monthIdx < todayMonth) return true; // past month
+  if (monthIdx === todayMonth) {
+    const daysLeft = DAYS_IN[monthIdx] - todayDate;
+    return daysLeft <= 5;
+  }
+  return false;
+}
+
+// ── STREAK ──
+function recalcStreak() {
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+  const { pct } = getDayCombinedPct(todayKey);
+
+  if (pct >= 70) {
+    if (state.lastCompleted !== todayKey) {
+      state.streak += 1;
+      state.lastCompleted = todayKey;
+    }
+  } else if (pct < 50 && state.lastCompleted !== todayKey) {
+    // don't reset mid-day
+  }
+
+  const countEl = document.getElementById('streak-count');
+  const msgEl = document.getElementById('streak-msg');
+  countEl.textContent = state.streak;
+
+  if (pct >= 70) {
+    msgEl.textContent = "You're doing amazing! 🌟";
+    msgEl.className = 'streak-msg';
+  } else if (pct < 50) {
+    msgEl.textContent = "Get back to work! 💪";
+    msgEl.className = 'streak-msg warn';
+  } else {
+    msgEl.textContent = "Keep pushing forward!";
+    msgEl.className = 'streak-msg';
+  }
+  save();
+}
+
+// ── VIEWS ──
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showYear() {
+  renderYearView();
+  showView('view-year');
+}
+
+function showMonth(idx) {
+  if (idx !== undefined) state.currentMonth = idx;
+  document.getElementById('bc-month').textContent = MONTHS[state.currentMonth];
+  document.getElementById('bc-month-link').textContent = MONTHS[state.currentMonth];
+  renderMonthView(state.currentMonth); // always re-render to pick up weekly task changes
+  showView('view-month');
+}
+
+function showTasks(monthIdx, day) {
+  if (monthIdx !== undefined) state.currentMonth = monthIdx;
+  if (day !== undefined) state.currentDate = day;
+  const key = dateKey(2026, state.currentMonth, state.currentDate);
+  const dateObj = new Date(2026, state.currentMonth, state.currentDate);
+  document.getElementById('bc-month').textContent = MONTHS[state.currentMonth];
+  document.getElementById('bc-month-link').textContent = MONTHS[state.currentMonth];
+  document.getElementById('bc-day').textContent = `${state.currentDate} ${MONTHS[state.currentMonth]}`;
+  document.getElementById('task-date-title').textContent =
+    dateObj.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+  // Reset history panel on each new day
+  historyVisible = false;
+  document.getElementById('history-wrap').style.display = 'none';
+  document.getElementById('history-btn').textContent = '▾ Show Task History';
+  renderTasks(key);
+  showView('view-tasks');
+}
+
+// ── RENDER YEAR ──
+function renderYearView() {
+  const grid = document.getElementById('month-grid');
+  grid.innerHTML = '';
+  MONTHS.forEach((name, i) => {
+    const pct = getMonthPct(i);
+    const nearEnd = isMonthNearEnd(i);
+    const bgColor = (nearEnd && pct > 0) ? pctToGradientColor(pct, 1) : null;
+    const barColor = (nearEnd && pct > 0) ? pctToBorderColor(pct) : 'var(--primary)';
+
+    const card = document.createElement('div');
+    card.className = 'month-card';
+    // For months not near end, keep subtle fill; for near-end use gradient
+    if (bgColor) {
+      card.style.background = bgColor;
+    } else {
+      card.style.setProperty('--fill', (pct / 100 * 0.12).toFixed(2));
+    }
+
+    card.innerHTML = `
+      <div class="month-name">${name}</div>
+      <div class="month-pct" style="${nearEnd && pct > 0 ? `color:${pctToBorderColor(pct)}` : ''}">${pct}%</div>
+      <div class="month-pct-label">${nearEnd ? (pct === 100 ? '✓ Complete' : 'Month ending soon') : 'Completion'}</div>
+      <div class="month-bar"><div class="month-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+    `;
+    card.onclick = () => showMonth(i);
+    grid.appendChild(card);
+  });
+}
+
+// ── RENDER MONTH ──
+function renderMonthView(monthIdx) {
+  const grid = document.getElementById('date-grid');
+  grid.innerHTML = '';
+  const today = new Date();
+
+  // Day headers
+  DAYS.forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'day-header';
+    h.textContent = d;
+    grid.appendChild(h);
+  });
+
+  const firstDay = new Date(2026, monthIdx, 1).getDay();
+  for (let i = 0; i < firstDay; i++) {
+    const e = document.createElement('div');
+    e.className = 'day-cell empty';
+    grid.appendChild(e);
+  }
+
+  // Pre-compute week pcts so all 7 cells in a row share the same value
+  const weekPctCache = {};
+  for (let d = 1; d <= DAYS_IN[monthIdx]; d++) {
+    const key = dateKey(2026, monthIdx, d);
+    if (weekPctCache[key] === undefined) {
+      const wp = getWeekPct(key);
+      getWeekRange(key).forEach(wk => { weekPctCache[wk] = wp; });
+    }
+  }
+
+  for (let d = 1; d <= DAYS_IN[monthIdx]; d++) {
+    const key = dateKey(2026, monthIdx, d);
+    const isToday = today.getFullYear() === 2026 && today.getMonth() === monthIdx && today.getDate() === d;
+
+    // Daily tasks for this exact date
+    const dailyPct = getDailyPct(key);  // -1 if none
+    const hasDailyTasks = dailyPct >= 0;
+
+    // Weekly tasks for the week this day belongs to
+    const weekPct = weekPctCache[key];  // -1 if none
+    const hasWeeklyTasks = weekPct >= 0;
+
+    const hasTasks = hasDailyTasks || hasWeeklyTasks;
+
+    // Combined pct: average of all applicable task-type pcts
+    let combinedPct = 0;
+    if (hasTasks) {
+      const parts = [];
+      if (hasDailyTasks)  parts.push(dailyPct);
+      if (hasWeeklyTasks) parts.push(weekPct);
+      combinedPct = Math.round(parts.reduce((a,b) => a+b,0) / parts.length);
+    }
+
+    const cell = document.createElement('div');
+    cell.className = `day-cell${isToday ? ' today' : ''}${hasTasks ? ' has-tasks' : ''}`;
+
+    if (hasTasks) {
+      cell.style.background = pctToGradientColor(combinedPct);
+      const borderC = pctToBorderColor(combinedPct);
+      if (borderC) cell.style.boxShadow = `inset 0 0 0 1.5px ${borderC}`;
+    } else {
+      cell.style.background = 'var(--surface)';
+    }
+
+    // Show week pct badge if only weekly tasks (no daily), to clarify source
+    const badge = hasTasks ? `<span class="day-pct">${combinedPct}%</span>` : '';
+    cell.innerHTML = `<span>${d}</span>${badge}`;
+    cell.onclick = () => showTasks(monthIdx, d);
+    grid.appendChild(cell);
+  }
+}
+
+// ── RENDER TASKS ──
+// Returns all tasks "relevant" to a given day:
+// - daily tasks assigned exactly on that date
+// - weekly tasks assigned anywhere in the same Sun-Sat week
+// - monthly tasks assigned anywhere in the same month
+function getRelevantTasks(key) {
+  const [y, m] = key.split('-').map(Number);
+  const weekKeys = getWeekRange(key);
+  const monthPrefix = `${y}-${String(m).padStart(2,'0')}-`;
+  return state.tasks.filter(t => {
+    if (t.type === 'daily')   return t.date === key;
+    if (t.type === 'weekly')  return weekKeys.includes(t.date);
+    if (t.type === 'monthly') return t.date.startsWith(monthPrefix);
+    return false;
+  });
+}
+
+function makeTaskItem(t, key) {
+  const item = document.createElement('div');
+  item.className = `task-item${t.done ? ' done' : ''}`;
+  // Show origin date tag if task is from a different date than current view
+  const dateTag = t.date !== key
+    ? `<span class="task-date-tag">${t.date.slice(5).replace('-','/')}</span>`
+    : '';
+  item.innerHTML = `
+    <div class="task-check${t.done ? ' checked' : ''}" onclick="toggleTask('${t.id}','${key}')"></div>
+    <div class="task-name">${escHtml(t.title)}</div>
+    ${dateTag}
+    <span class="task-type-badge">${t.type}</span>
+    <button class="task-del" onclick="deleteTask('${t.id}','${key}')" title="Delete">×</button>
+  `;
+  return item;
+}
+
+function renderTasks(key) {
+  const allRelevant = getRelevantTasks(key);
+  const total = allRelevant.length;
+  const done  = allRelevant.filter(t => t.done).length;
+
+  const { pct: combinedPct } = getDayCombinedPct(key);
+  const pct = total ? combinedPct : 0;
+  const circumference = 175.93;
+
+  const ringFill = document.getElementById('ring-fill');
+  ringFill.style.strokeDashoffset = circumference - (circumference * pct / 100);
+  ringFill.style.stroke = pct > 0 ? pctToBorderColor(pct) : 'var(--primary)';
+  document.getElementById('ring-text').textContent = `${pct}%`;
+  document.getElementById('task-date-pct').textContent = total ? `${done} of ${total} tasks done` : 'No tasks yet';
+
+  const sections = { daily: [], weekly: [], monthly: [] };
+  allRelevant.forEach(t => sections[t.type].push(t));
+
+  const container = document.getElementById('task-sections');
+  container.innerHTML = '';
+
+  if (!total) {
+    container.innerHTML = '<div class="empty-state">No tasks for this day.<br>Add one above to get started.</div>';
+    renderHistory(key);
+    return;
+  }
+
+  ['daily','weekly','monthly'].forEach(type => {
+    if (!sections[type].length) return;
+    const sec = document.createElement('div');
+    sec.className = 'task-section';
+    sec.innerHTML = `<h3>${type}</h3><div class="task-list" id="list-${type}"></div>`;
+    container.appendChild(sec);
+    const list = sec.querySelector(`#list-${type}`);
+    sections[type].forEach(t => list.appendChild(makeTaskItem(t, key)));
+  });
+
+  renderHistory(key);
+  recalcStreak();
+}
+
+// ── HISTORY ──
+// History is scoped by task type:
+//   daily   → all daily tasks from dates OTHER than today, sorted newest-first
+//   weekly  → all weekly tasks from THIS week on dates OTHER than those already shown
+//   monthly → all monthly tasks from THIS month on dates OTHER than those already shown
+// Tasks already shown in the main sections are excluded.
+function renderHistory(currentKey) {
+  const wrap    = document.getElementById('history-wrap');
+  const section = document.getElementById('history-section');
+  section.innerHTML = '';
+
+  const [y, m] = currentKey.split('-').map(Number);
+  const weekKeys    = new Set(getWeekRange(currentKey));
+  const monthPrefix = `${y}-${String(m).padStart(2,'0')}-`;
+  const currentIds  = new Set(getRelevantTasks(currentKey).map(t => t.id));
+
+  // Filter each type to its own scope, excluding already-shown tasks
+  const historyTasks = state.tasks.filter(t => {
+    if (currentIds.has(t.id)) return false;          // already shown above
+    if (t.type === 'daily')   return true;            // all other daily tasks ever
+    if (t.type === 'weekly')  return weekKeys.has(t.date);   // same week only
+    if (t.type === 'monthly') return t.date.startsWith(monthPrefix); // same month only
+    return false;
+  }).sort((a, b) => b.date.localeCompare(a.date));
+
+  if (!historyTasks.length) {
+    wrap.style.display = 'none';
+    document.getElementById('history-btn').style.display = 'none';
+    return;
+  }
+  document.getElementById('history-btn').style.display = '';
+
+  // Group by type first, then by date within each type
+  const groups = { weekly: {}, monthly: {}, daily: {} };
+  historyTasks.forEach(t => {
+    const g = groups[t.type] || groups.daily;
+    if (!g[t.date]) g[t.date] = [];
+    g[t.date].push(t);
+  });
+
+  // Section labels and their scope description
+  const typeMeta = {
+    weekly:  { label: 'This Week',  desc: 'weekly tasks from this week' },
+    monthly: { label: 'This Month', desc: 'monthly tasks from this month' },
+    daily:   { label: 'All Daily History', desc: 'daily tasks from other days' },
+  };
+
+  ['weekly','monthly','daily'].forEach(type => {
+    const byDate = groups[type];
+    const dates  = Object.keys(byDate).sort((a,b) => b.localeCompare(a));
+    if (!dates.length) return;
+
+    // Type header
+    const typeHeader = document.createElement('div');
+    typeHeader.className = 'history-group-label';
+    typeHeader.style.cssText = 'color:var(--text-soft);font-size:11px;margin-bottom:12px;';
+    typeHeader.textContent = typeMeta[type].label;
+    section.appendChild(typeHeader);
+
+    dates.forEach(date => {
+      const group = document.createElement('div');
+      group.className = 'history-group';
+
+      const label = document.createElement('div');
+      label.className = 'history-group-label';
+      const d = new Date(date + 'T00:00:00');
+      label.textContent = d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
+      group.appendChild(label);
+
+      const list = document.createElement('div');
+      list.className = 'task-list';
+      byDate[date].forEach(t => list.appendChild(makeTaskItem(t, currentKey)));
+      group.appendChild(list);
+      section.appendChild(group);
+    });
+  });
+}
+
+function toggleHistory() {
+  historyVisible = !historyVisible;
+  document.getElementById('history-wrap').style.display = historyVisible ? 'block' : 'none';
+  document.getElementById('history-btn').textContent = historyVisible ? '▴ Hide Task History' : '▾ Show Task History';
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── TASK ACTIONS ──
+function addTask() {
+  const input = document.getElementById('task-input');
+  const type = document.getElementById('task-type').value;
+  const title = input.value.trim();
+  if (!title) { input.focus(); return; }
+  const key = dateKey(2026, state.currentMonth, state.currentDate);
+  state.tasks.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,5), title, type, date: key, done: false });
+  input.value = '';
+  renderTasks(key);
+  save();
+}
+
+function toggleTask(id, key) {
+  const t = state.tasks.find(t => t.id === id);
+  if (t) { t.done = !t.done; renderTasks(key); save(); }
+}
+
+function deleteTask(id, key) {
+  state.tasks = state.tasks.filter(t => t.id !== id);
+  renderTasks(key);
+  save();
+}
+
+// ── ENTER KEY ──
+document.getElementById('task-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addTask();
+});
+
+// ── COLOR PICKER ──
+document.getElementById('color-picker').addEventListener('input', e => {
+  state.primaryColor = e.target.value;
+  applyPrimary(e.target.value);
+  save();
+  if (document.getElementById('view-year').classList.contains('active')) renderYearView();
+  else if (document.getElementById('view-month').classList.contains('active')) renderMonthView(state.currentMonth);
+});
+
+// ── INIT ──
+applyPrimary(state.primaryColor);
+document.getElementById('color-picker').value = state.primaryColor;
+renderYearView();
+recalcStreak();
+
+// Loader
+setTimeout(() => {
+  document.getElementById('loader').classList.add('hide');
+  const app = document.getElementById('app');
+  app.classList.add('visible');
+}, 1800);
+</script>
+</body>
+</html>
